@@ -65,7 +65,7 @@ export class OpenAiService {
       const response = await axios.post(
         this.endpoint,
         {
-          model: 'mixtral-8x7b-32768',
+          model: 'mistral-7b-8k',
           messages: [
             {
               role: 'system',
