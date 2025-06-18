@@ -41,19 +41,16 @@ let OpenAiService = OpenAiService_1 = class OpenAiService {
             const updatedRaw = response.data.choices?.[0]?.message?.content;
             if (!updatedRaw) {
                 this.logger.warn('⚠️ No response from Groq');
-                return false;
             }
             const updatedCode = this.extractCodeBlock(updatedRaw);
             await fs.writeFile(filePath, updatedCode, 'utf-8');
             this.logger.log(`✅ Refactored file saved: ${filePath}`);
-            return true;
         }
         catch (error) {
             this.logger.error(`❌ Failed to refactor: ${error.message}`);
             if (error.response?.data) {
                 this.logger.error('🔍 Groq response:', JSON.stringify(error.response.data, null, 2));
             }
-            return false;
         }
     }
     extractCodeBlock(text) {

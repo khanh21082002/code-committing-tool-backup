@@ -56,7 +56,7 @@ export class OpenAiService {
   private readonly apiKey = process.env.GROQ_API_KEY;
   private readonly endpoint = 'https://api.groq.com/openai/v1/chat/completions';
 
-  async refactorFile(filePath: string): Promise<boolean> {
+  async refactorFile(filePath: string): Promise<void> {
     try {
       const originalCode = await fs.readFile(filePath, 'utf-8');
 
@@ -90,20 +90,17 @@ export class OpenAiService {
 
       if (!updatedRaw) {
         this.logger.warn('⚠️ No response from Groq');
-        return false;
       }
 
       const updatedCode = this.extractCodeBlock(updatedRaw);
 
       await fs.writeFile(filePath, updatedCode, 'utf-8');
       this.logger.log(`✅ Refactored file saved: ${filePath}`);
-      return true;
     } catch (error) {
       this.logger.error(`❌ Failed to refactor: ${error.message}`);
       if (error.response?.data) {
         this.logger.error('🔍 Groq response:', JSON.stringify(error.response.data, null, 2));
       }
-      return false;
     }
   }
 

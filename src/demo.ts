@@ -1,8 +1,17 @@
 /**
- * Returns a personalized greeting message
+ * Generates a personalized greeting message
+ * 
+ * @param greeting The greeting text to use (defaults to 'Hello')
  * @param name The name to include in the greeting
- * @returns A greeting string
+ * @returns A formatted greeting string
+ * 
+ * @example
+ * greet('Alice') // returns 'Hello Alice'
+ * greet('Hi', 'Bob') // returns 'Hi Bob'
  */
-export function greet(name: string): string {
-    return `Hello ${name}`;
+export function greet(
+  greeting: string = 'Hello',
+  name: string
+): string {
+  return `${greeting} ${name}`;
 }
