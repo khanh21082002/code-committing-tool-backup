@@ -1,1 +1,1 @@
-export declare function greet(name: string): string;
+export declare const greet: (name: string) => string;
