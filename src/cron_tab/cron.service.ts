@@ -15,7 +15,7 @@ export class CronService {
   @Cron(CronExpression.EVERY_10_SECONDS)
   async handleCron() {
     // const srcDir = path.join(__dirname, '../src');
-    const testFile = path.join(__dirname, '../src/demo.ts');
+    const testFile = path.join(process.cwd(), 'src/demo.ts');
     
     // const allFiles = await this.getAllTsFiles(testFile);
 

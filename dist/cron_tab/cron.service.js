@@ -25,7 +25,7 @@ let CronService = CronService_1 = class CronService {
         this.openAiService = openAiService;
     }
     async handleCron() {
-        const testFile = path.join(__dirname, '../src/demo.ts');
+        const testFile = path.join(process.cwd(), 'src/demo.ts');
         try {
             await this.openAiService.refactorFile(testFile);
             await this.git.add('.');
