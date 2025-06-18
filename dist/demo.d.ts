@@ -1,1 +1,1 @@
-export declare function greet(name: string): string;
+export declare function greet(greeting: string | undefined, name: string): string;
