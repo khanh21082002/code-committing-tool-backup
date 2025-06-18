@@ -1,5 +1,6 @@
 export declare class OpenAiService {
-    private openai;
     private readonly logger;
+    private readonly apiKey;
+    private readonly endpoint;
     refactorFile(filePath: string): Promise<void>;
 }

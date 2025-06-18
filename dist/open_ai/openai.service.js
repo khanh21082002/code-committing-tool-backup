@@ -9,39 +9,44 @@ var OpenAiService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OpenAiService = void 0;
 const common_1 = require("@nestjs/common");
-const openai_1 = require("openai");
 const fs = require("fs/promises");
+const axios_1 = require("axios");
 let OpenAiService = OpenAiService_1 = class OpenAiService {
-    openai = new openai_1.OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     logger = new common_1.Logger(OpenAiService_1.name);
+    apiKey = process.env.GROQ_API_KEY;
+    endpoint = 'https://api.groq.com/openai/v1/chat/completions';
     async refactorFile(filePath) {
         try {
             const originalCode = await fs.readFile(filePath, 'utf-8');
-            this.logger.log(`🔁 Sending code to OpenAI for refactoring: ${filePath}`);
-            const completion = await this.openai.chat.completions.create({
-                model: 'gpt-3.5-turbo',
+            this.logger.log(`🔁 Sending code to Groq for refactoring: ${filePath}`);
+            const response = await axios_1.default.post(this.endpoint, {
+                model: 'mixtral-8x7b-32768',
                 messages: [
                     {
                         role: 'system',
-                        content: 'You are a senior software engineer who refactors code for clarity and maintainability.',
+                        content: 'You are a senior software engineer. Refactor the code for better readability without changing its behavior.',
                     },
                     {
                         role: 'user',
-                        content: `Refactor the following code and improve it without changing its behavior:\n\n${originalCode}`,
+                        content: `Refactor this code:\n\n${originalCode}`,
                     },
                 ],
-                temperature: 0.5,
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${this.apiKey}`,
+                },
             });
-            const updatedCode = completion.choices?.[0]?.message?.content;
+            const updatedCode = response.data.choices?.[0]?.message?.content;
             if (!updatedCode) {
-                this.logger.warn('⚠️ OpenAI returned empty or invalid response.');
+                this.logger.warn('⚠️ No response from Groq');
                 return;
             }
             await fs.writeFile(filePath, updatedCode, 'utf-8');
-            this.logger.log(`✅ File refactored successfully: ${filePath}`);
+            this.logger.log(`✅ Refactored file saved: ${filePath}`);
         }
         catch (error) {
-            this.logger.error(`❌ Failed to refactor file: ${filePath} - ${error.message}`);
+            this.logger.error(`❌ Failed to refactor: ${error.message}`);
         }
     }
 };
