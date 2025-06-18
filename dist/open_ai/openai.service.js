@@ -28,9 +28,10 @@ let OpenAiService = OpenAiService_1 = class OpenAiService {
                     },
                     {
                         role: 'user',
-                        content: `Refactor this code:\n\n${originalCode}`,
+                        content: `Refactor this code:\n\n${originalCode.slice(0, 5000)}`,
                     },
                 ],
+                temperature: 0.5,
             }, {
                 headers: {
                     'Content-Type': 'application/json',
@@ -47,6 +48,9 @@ let OpenAiService = OpenAiService_1 = class OpenAiService {
         }
         catch (error) {
             this.logger.error(`❌ Failed to refactor: ${error.message}`);
+            if (error.response?.data) {
+                this.logger.error('🔍 Groq response:', JSON.stringify(error.response.data, null, 2));
+            }
         }
     }
 };
