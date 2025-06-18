@@ -19,7 +19,7 @@ let OpenAiService = OpenAiService_1 = class OpenAiService {
             const originalCode = await fs.readFile(filePath, 'utf-8');
             this.logger.log(`🔁 Sending code to OpenAI for refactoring: ${filePath}`);
             const completion = await this.openai.chat.completions.create({
-                model: 'gpt-4o',
+                model: 'gpt-3.5-turbo',
                 messages: [
                     {
                         role: 'system',
