@@ -91,8 +91,10 @@ export class OpenAiService {
       if (!updatedRaw) {
         this.logger.warn('⚠️ No response from Groq');
       }
+      this.logger.log('Raw Response from Groq:', updatedRaw);
 
       const updatedCode = this.extractCodeBlock(updatedRaw);
+      this.logger.log('Updated Code:', updatedCode);
 
       await fs.writeFile(filePath, updatedCode, 'utf-8');
       this.logger.log(`✅ Refactored file saved: ${filePath}`);
