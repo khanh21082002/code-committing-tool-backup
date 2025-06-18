@@ -20,7 +20,7 @@ let OpenAiService = OpenAiService_1 = class OpenAiService {
             const originalCode = await fs.readFile(filePath, 'utf-8');
             this.logger.log(`🔁 Sending code to Groq for refactoring: ${filePath}`);
             const response = await axios_1.default.post(this.endpoint, {
-                model: 'mistral-7b-8k',
+                model: 'mistral-7b-instruct',
                 messages: [
                     {
                         role: 'system',
