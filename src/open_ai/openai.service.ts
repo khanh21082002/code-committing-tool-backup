@@ -56,7 +56,7 @@ export class OpenAiService {
   private readonly apiKey = process.env.GROQ_API_KEY;
   private readonly endpoint = 'https://api.groq.com/openai/v1/chat/completions';
 
-  async refactorFile(filePath: string): Promise<void> {
+  async refactorFile(filePath: string): Promise<boolean> {
     try {
       const originalCode = await fs.readFile(filePath, 'utf-8');
 
@@ -65,16 +65,15 @@ export class OpenAiService {
       const response = await axios.post(
         this.endpoint,
         {
-          model: 'deepseek-r1-distill-llama-70b',
+          model: 'mistral-7b-instruct',
           messages: [
             {
               role: 'system',
-              content:
-                'You are a senior software engineer. Refactor the code for better readability without changing its behavior.',
+              content: 'You are a senior engineer. Refactor the code for clarity and maintainability. Only return the modified code.',
             },
             {
               role: 'user',
-              content: `Refactor this code:\n\n${originalCode.slice(0, 5000)}`,
+              content: `Refactor this TypeScript code:\n\n${originalCode.slice(0, 4000)}`,
             },
           ],
           temperature: 0.5,
@@ -87,23 +86,30 @@ export class OpenAiService {
         },
       );
 
-      const updatedCode = response.data.choices?.[0]?.message?.content;
+      const updatedRaw = response.data.choices?.[0]?.message?.content;
 
-      if (!updatedCode) {
+      if (!updatedRaw) {
         this.logger.warn('⚠️ No response from Groq');
-        return;
+        return false;
       }
+
+      const updatedCode = this.extractCodeBlock(updatedRaw);
 
       await fs.writeFile(filePath, updatedCode, 'utf-8');
       this.logger.log(`✅ Refactored file saved: ${filePath}`);
+      return true;
     } catch (error) {
       this.logger.error(`❌ Failed to refactor: ${error.message}`);
       if (error.response?.data) {
-    this.logger.error(
-      '🔍 Groq response:',
-      JSON.stringify(error.response.data, null, 2),
-    );
-  }
+        this.logger.error('🔍 Groq response:', JSON.stringify(error.response.data, null, 2));
+      }
+      return false;
     }
   }
+
+  private extractCodeBlock(text: string): string {
+    const match = text.match(/```(?:\w*\n)?([\s\S]*?)```/);
+    return match ? match[1].trim() : text.trim();
+  }
 }
+
