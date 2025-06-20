@@ -46,9 +46,10 @@
 
 
 import { Injectable, Logger } from '@nestjs/common';
-import { OpenAI } from 'openai';
 import * as fs from 'fs/promises';
 import axios from 'axios';
+import { PROMPTS } from './prompt';
+import path from 'path/win32';
 
 @Injectable()
 export class OpenAiService {
@@ -56,11 +57,13 @@ export class OpenAiService {
   private readonly apiKey = process.env.GROQ_API_KEY;
   private readonly endpoint = 'https://api.groq.com/openai/v1/chat/completions';
 
-  async refactorFile(filePath: string): Promise<void> {
+  async refactorFile(filePath: string): Promise<string | void> {
     try {
       const originalCode = await fs.readFile(filePath, 'utf-8');
 
       this.logger.log(`🔁 Sending code to Groq for refactoring: ${filePath}`);
+
+      const randomPrompt = PROMPTS[Math.floor(Math.random() * PROMPTS.length)];
 
       const response = await axios.post(
         this.endpoint,
@@ -69,14 +72,15 @@ export class OpenAiService {
           messages: [
             {
               role: 'system',
-              content: 'You are a senior engineer. Refactor the code for clarity and maintainability. Only return the modified code.',
+              content: 'You are a senior engineer with many years of experience in software development.',
             },
             {
               role: 'user',
-              content: `Refactor this TypeScript code:\n\n${originalCode.slice(0, 4000)}`,
+              content: `${randomPrompt.instruction}\n\n${originalCode.slice(0, 5000)}`,
             },
           ],
           temperature: 0.5,
+          top_p: 1.0,
         },
         {
           headers: {
@@ -98,6 +102,31 @@ export class OpenAiService {
 
       await fs.writeFile(filePath, updatedCode, 'utf-8');
       this.logger.log(`✅ Refactored file saved: ${filePath}`);
+
+            // Generate commit message
+      const commitMsgResponse = await axios.post(
+        this.endpoint,
+        {
+          model: 'deepseek-r1-distill-llama-70b',
+          messages: [
+            { role: 'system', content: 'You are a Git expert assistant with excellent commit message writing skills.' },
+            { role: 'user', content: `Generate a short commit message. Use concise format like: "refactor: simplify CSS center layout", also not including greetings or explanations for the following code:\n\n${updatedCode.slice(0, 1000)}` },
+          ],
+          temperature: 0.5,
+          top_p: 1.0,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+        },
+      );
+
+      const rawCommitMessage = commitMsgResponse.data.choices?.[0]?.message?.content;
+      const commitMessage = this.extractCommitMessage(rawCommitMessage);
+      this.logger.log('Commit Message:', commitMessage);
+      return commitMessage;
     } catch (error) {
       this.logger.error(`❌ Failed to refactor: ${error.message}`);
       if (error.response?.data) {
@@ -110,5 +139,18 @@ export class OpenAiService {
     const match = text.match(/```(?:\w*\n)?([\s\S]*?)```/);
     return match ? match[1].trim() : text.trim();
   }
+
+  private extractCommitMessage(text: string): string {
+  const cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+  const lines = cleaned.split('\n').map(line => line.trim()).filter(line => line);
+
+  const commitLine = lines.find(line =>
+    /^[a-z]+(\([\w-]+\))?:\s.+/.test(line),
+  );
+
+  return commitLine || lines[lines.length - 1] || '';
+}
+
 }
 
