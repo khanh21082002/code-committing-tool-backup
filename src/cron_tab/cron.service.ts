@@ -4,7 +4,6 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import simpleGit from 'simple-git';
 import { OpenAiService } from '../open_ai/openai.service';
-import e from 'express';
 
 @Injectable()
 export class CronService {
