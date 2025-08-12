@@ -12,47 +12,81 @@ var CronService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CronService = void 0;
 const common_1 = require("@nestjs/common");
-const schedule_1 = require("@nestjs/schedule");
-const openai_service_1 = require("../open_ai/openai.service");
 const path = require("path");
 const fs = require("fs/promises");
-const simpleGit = require("simple-git");
+const simple_git_1 = require("simple-git");
+const openai_service_1 = require("../open_ai/openai.service");
 let CronService = CronService_1 = class CronService {
     openAiService;
     logger = new common_1.Logger(CronService_1.name);
-    git = simpleGit.default();
     constructor(openAiService) {
         this.openAiService = openAiService;
     }
-    async handleCron() {
-        const testFile = path.join(process.cwd(), 'src/demo.ts');
+    async triggerCommit(commitDto) {
+        const { repoUrl, repoBranch, githubToken, githubName, githubEmail } = commitDto;
+        const repoDir = path.join(process.cwd(), 'temp/code-challenge-v2');
         try {
-            await this.openAiService.refactorFile(testFile);
-            await this.git.add('.');
-            await this.git.commit(`refactor: auto-improve ${path.basename(testFile)}`);
-            await this.git.push('origin', 'main');
-            this.logger.log('✅ Commit and push successful!');
+            this.logger.log('📥 Cloning repo...');
+            await (0, simple_git_1.default)().clone(this.addTokenToUrl(repoUrl, githubToken), repoDir);
+            const isRepo = await this.checkIfGitRepo(repoDir);
+            if (!isRepo) {
+                this.logger.error('❌ Cloned directory is not a valid git repository');
+                return;
+            }
+            const allFiles = await this.getAllFiles(repoDir);
+            if (allFiles.length === 0) {
+                this.logger.warn('⚠️ No suitable files found to refactor.');
+                return;
+            }
+            const randomFile = allFiles[Math.floor(Math.random() * allFiles.length)];
+            this.logger.log(`🛠️ Refactoring file: ${randomFile}`);
+            const commitMessage = await this.openAiService.refactorFile(randomFile);
+            if (!commitMessage) {
+                this.logger.warn('There is some problem with AI response, commitMessage is empty');
+                return;
+            }
+            const git = (0, simple_git_1.default)(repoDir);
+            await git.addConfig('user.name', githubName);
+            await git.addConfig('user.email', githubEmail);
+            await git.add('.');
+            await git.commit(commitMessage);
+            await git.push('origin', repoBranch);
+            this.logger.log('✅ Commit & push successful');
+            await fs.rm(repoDir, { recursive: true, force: true });
         }
         catch (error) {
-            this.logger.error(`❌ Cron task failed: ${error.message}`);
+            this.logger.error(`❌ Commit task failed: ${error.message}`);
         }
     }
-    async getAllTsFiles(dir) {
-        const dirents = await fs.readdir(dir, { withFileTypes: true });
-        const files = await Promise.all(dirents.map(async (dirent) => {
-            const res = path.resolve(dir, dirent.name);
-            return dirent.isDirectory() ? this.getAllTsFiles(res) : res;
+    addTokenToUrl(url, token) {
+        return url.replace('https://', `https://${token}@`);
+    }
+    async checkIfGitRepo(dir) {
+        try {
+            return await (0, simple_git_1.default)(dir).checkIsRepo();
+        }
+        catch (error) {
+            this.logger.warn(`⚠️ Git repo check failed: ${error.message}`);
+            return false;
+        }
+    }
+    async getAllFiles(dir) {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        const files = await Promise.all(entries.map(async (entry) => {
+            const fullPath = path.resolve(dir, entry.name);
+            if (entry.isDirectory()) {
+                if (['node_modules', 'dist', '.git', '.github', '.gitignore', 'package-lock.json', 'package.json'].includes(entry.name))
+                    return [];
+                return this.getAllFiles(fullPath);
+            }
+            else {
+                return [fullPath];
+            }
         }));
-        return files.flat().filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts'));
+        return files.flat().filter(f => !f.endsWith('.lock') && !f.endsWith('.png'));
     }
 };
 exports.CronService = CronService;
-__decorate([
-    (0, schedule_1.Cron)(schedule_1.CronExpression.EVERY_10_SECONDS),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], CronService.prototype, "handleCron", null);
 exports.CronService = CronService = CronService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [openai_service_1.OpenAiService])

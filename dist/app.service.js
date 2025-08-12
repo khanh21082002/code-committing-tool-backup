@@ -12,6 +12,9 @@ let AppService = class AppService {
     getHello() {
         return 'Hello World!';
     }
+    commitCode() {
+        return 'Code committed successfully!';
+    }
 };
 exports.AppService = AppService;
 exports.AppService = AppService = __decorate([

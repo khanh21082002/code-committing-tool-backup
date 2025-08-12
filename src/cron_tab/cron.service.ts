@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import simpleGit from 'simple-git';
 import { OpenAiService } from '../open_ai/openai.service';
+import { CommitDto } from '../commit/dto/commit.dto';
 
 @Injectable()
 export class CronService {
@@ -11,27 +12,21 @@ export class CronService {
 
   constructor(private readonly openAiService: OpenAiService) {}
 
-  @Cron(CronExpression.EVERY_10_SECONDS)
-  async handleCron() {
-    const repoUrl = process.env.TARGET_REPO_URL;
-    const repoDir = path.join(process.cwd(), 'temp/code-challenge-v2');
-    const branch = process.env.TARGET_REPO_BRANCH || 'main';
-    const token = process.env.GITHUB_TOKEN;
+  
 
-    if (!repoUrl || !token) {
-      this.logger.error('❌ TARGET_REPO_URL or GITHUB_TOKEN is not available');
-      return;
-    }
+  async triggerCommit(commitDto: CommitDto) {
+    const { repoUrl, repoBranch, githubToken, githubName, githubEmail } = commitDto;
+    const repoDir = path.join(process.cwd(), 'temp/code-challenge-v2');
 
     try {
-        this.logger.log('📥 Cloning repo...');
-        await simpleGit().clone(this.addTokenToUrl(repoUrl, token), repoDir);
+      this.logger.log('📥 Cloning repo...');
+      await simpleGit().clone(this.addTokenToUrl(repoUrl, githubToken), repoDir);
 
-        const isRepo = await this.checkIfGitRepo(repoDir);
-        if (!isRepo) {
-          this.logger.error('❌ Cloned directory is not a valid git repository');
-          return;
-        }
+      const isRepo = await this.checkIfGitRepo(repoDir);
+      if (!isRepo) {
+        this.logger.error('❌ Cloned directory is not a valid git repository');
+        return;
+      }
 
       const allFiles = await this.getAllFiles(repoDir);
       if (allFiles.length === 0) {
@@ -49,20 +44,16 @@ export class CronService {
       }
 
       const git = simpleGit(repoDir);
-      if (!process.env.GITHUB_NAME || !process.env.GITHUB_EMAIL) {
-        this.logger.error('GITHUB_NAME or GITHUB_EMAIL environment variables is not available');
-        return;
-      }
-      await git.addConfig('user.name', process.env.GITHUB_NAME);
-      await git.addConfig('user.email', process.env.GITHUB_EMAIL);
+      await git.addConfig('user.name', githubName);
+      await git.addConfig('user.email', githubEmail);
       await git.add('.');
       await git.commit(commitMessage);
-      await git.push('origin', branch);
+      await git.push('origin', repoBranch);
 
       this.logger.log('✅ Commit & push successful');
       await fs.rm(repoDir, { recursive: true, force: true });
     } catch (error) {
-      this.logger.error(`❌ Cron task failed: ${error.message}`);
+      this.logger.error(`❌ Commit task failed: ${error.message}`);
     }
   }
 
@@ -71,13 +62,13 @@ export class CronService {
   }
 
   private async checkIfGitRepo(dir: string): Promise<boolean> {
-  try {
-    return await simpleGit(dir).checkIsRepo();
-  } catch (error) {
-    this.logger.warn(`⚠️ Git repo check failed: ${error.message}`);
-    return false;
+    try {
+      return await simpleGit(dir).checkIsRepo();
+    } catch (error) {
+      this.logger.warn(`⚠️ Git repo check failed: ${error.message}`);
+      return false;
+    }
   }
-}
 
   private async getAllFiles(dir: string): Promise<string[]> {
     const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -95,3 +86,4 @@ export class CronService {
     return files.flat().filter(f => !f.endsWith('.lock') && !f.endsWith('.png'));
   }
 }
+
