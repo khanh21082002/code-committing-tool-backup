@@ -12,7 +12,10 @@ export class CronService {
 
   constructor(private readonly openAiService: OpenAiService) {}
 
-  
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  checkDeploymentCost() {
+    this.logger.log('💰 Checking deployment cost...');
+  }
 
   async triggerCommit(commitDto: CommitDto) {
     const { repoUrl, repoBranch, githubToken, githubName, githubEmail } = commitDto;

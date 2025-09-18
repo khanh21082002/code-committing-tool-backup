@@ -12,6 +12,7 @@ var CronService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CronService = void 0;
 const common_1 = require("@nestjs/common");
+const schedule_1 = require("@nestjs/schedule");
 const path = require("path");
 const fs = require("fs/promises");
 const simple_git_1 = require("simple-git");
@@ -21,6 +22,9 @@ let CronService = CronService_1 = class CronService {
     logger = new common_1.Logger(CronService_1.name);
     constructor(openAiService) {
         this.openAiService = openAiService;
+    }
+    checkDeploymentCost() {
+        this.logger.log('💰 Checking deployment cost...');
     }
     async triggerCommit(commitDto) {
         const { repoUrl, repoBranch, githubToken, githubName, githubEmail } = commitDto;
@@ -87,6 +91,12 @@ let CronService = CronService_1 = class CronService {
     }
 };
 exports.CronService = CronService;
+__decorate([
+    (0, schedule_1.Cron)(schedule_1.CronExpression.EVERY_5_MINUTES),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], CronService.prototype, "checkDeploymentCost", null);
 exports.CronService = CronService = CronService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [openai_service_1.OpenAiService])
